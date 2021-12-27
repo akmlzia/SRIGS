@@ -1,15 +1,23 @@
+#Module Import
 import sqlite3
 import tkinter as tk
 from os.path import exists
 from initiate_db import initiate_db
 from tkinter import ttk
+import pandas as pd
+import pickle
+
+#For insert and get deck and progress DataFrame
+sqlite3.register_converter("pickle", pickle.loads)
+sqlite3.register_adapter(pd.DataFrame, pickle.dumps)
 
 class WelcomeFrame(ttk.Frame):
     def __init__(self, container, connection):
         super().__init__(container)
 
         #fetch all student
-        self.welcome_cursor = connection.cursor()
+        self.connection = connection
+        self.welcome_cursor = self.connection.cursor()
         self.welcome_cursor.execute("SELECT * FROM students;")
         self.students_list = self.welcome_cursor.fetchall()
         self.students_list = {self.students_list[i][2]: self.students_list[i] for i in range(len(self.students_list))}
@@ -34,10 +42,12 @@ class WelcomeFrame(ttk.Frame):
         self.button_frame.pack(pady=10)
         
         #Choose Student Button
-        self.choose_person_button_nd = ttk.Button(self.button_frame, text="Mulai Sesi Baru", command=lambda: self.move2deck(self.students_list[self.person_combobox.get()], True))
+        self.choose_person_button_nd = ttk.Button(self.button_frame, text="Mulai Sesi Baru", 
+                                                  command=lambda: self.move2deck(self.students_list[self.person_combobox.get()], True, self.connection))
         self.choose_person_button_nd.pack()
         self.choose_person_button_nd["state"] = "disabled"
-        self.choose_person_button_od = ttk.Button(self.button_frame, text="Mulai Sesi Lama", command=lambda: self.move2deck(self.students_list[self.person_combobox.get()], False))
+        self.choose_person_button_od = ttk.Button(self.button_frame, text="Mulai Sesi Lama", 
+                                                  command=lambda: self.move2deck(self.students_list[self.person_combobox.get()], False, self.connection))
         self.choose_person_button_od.pack(pady=5)
         self.choose_person_button_od["state"] = "disabled"
         
@@ -54,18 +64,20 @@ class WelcomeFrame(ttk.Frame):
             self.choose_person_button_od["state"] = "disabled"
 
     #Frame change (Welcome -> Deck) function
-    def move2deck(self, student_tuple, decrease_days):
+    def move2deck(self, student_tuple, decrease_days, connection):
         self.destroy()
-        DeckFrame(self.container, student_tuple, decrease_days)
+        DeckFrame(self.container, student_tuple, decrease_days, connection)
 
 class DeckFrame(ttk.Frame):
-    def __init__(self, container, student_tuple, decrease_days):
+    def __init__(self, container, student_tuple, decrease_days, connection):
         super().__init__(container)
 
         self.student_tuple = student_tuple
         # student_tuple = (id, nick_name, full_name, group_name, join_date)
+        self.progress_list = []
 
-        #fetch all student's deck name
+        #fetch all student's deck
+        self.connection = connection
         #self.deck_cursor = connection.cursor()
         #self.deck_cursor.execute("COMMAND")
         #self.deck_list = self.deck_cursor.fetchall()
@@ -81,12 +93,20 @@ class DeckFrame(ttk.Frame):
         self.choose_instruction = ttk.Label(self, text="Pilih Deck:")
         self.choose_instruction.pack(pady=10)
 
+        #Treeview Frame (TreeView and NoProgress Label inside)
+        self.tree_frame = ttk.Frame(self)
+        self.tree_frame.pack(pady=10)
+        
+        #No Deck Warn Label
+        self.nodeck_warn_label = ttk.Label(self.tree_frame, text="Siswa ini belum mendaftar sebuah deck.")
+        self.nodeck_warn_label.grid()
+        
         #Deck Treeview
         self.columns = ("deck_name", "status")
-        self.deck_tree = ttk.Treeview(self, columns=self.columns, show='headings')
+        self.deck_tree = ttk.Treeview(self.tree_frame, columns=self.columns, show='headings')
         self.deck_tree.heading("deck_name", text="Nama Deck")
         self.deck_tree.heading("status", text="Status")
-        self.deck_tree.pack(pady=10, expand=True)
+        self.deck_tree.grid()
         self.deck_tree.bind('<Button-1>', self.handle_manual_column_resize)
         self.deck_tree.bind('<Motion>', self.handle_manual_column_resize)
 
@@ -97,7 +117,12 @@ class DeckFrame(ttk.Frame):
         #Pack frame to window
         self.pack(expand=True)
 
-    #Disable manual column resizing
+    #Show no deck label function
+    def raise_nodeck_label(self, progress_bool):
+        if progress_bool == "False":
+            return "break"
+    
+    #Disable manual column resizing function
     def handle_manual_column_resize(self, event):
         if self.deck_tree.identify_region(event.x, event.y) == "separator":
             return "break"
@@ -108,7 +133,7 @@ class DeckFrame(ttk.Frame):
     #    SessionFrame(self.container)
 
 class SessionFrame(ttk.Frame):
-    def __init__(self, container):
+    def __init__(self, container, connection):
         super().__init__(container)
 
         self.student_tuple = student_tuple

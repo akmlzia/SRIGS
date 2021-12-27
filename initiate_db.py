@@ -1,5 +1,10 @@
 import sqlite3
 from sqlite3 import Error
+import pickle
+import pandas as pd
+
+sqlite3.register_converter("pickle", pickle.loads)
+sqlite3.register_adapter(pd.DataFrame, pickle.dumps) 
 
 def initiate_db():
     conn = sqlite3.connect('data.db')
@@ -14,15 +19,14 @@ def initiate_db():
     create_decks_table = """ CREATE TABLE IF NOT EXISTS decks (
                                 id integer PRIMARY KEY,
                                 deck_name text NOT NULL,
-                                deck text NOT NULL,
-                                old_deck text,
-                                add_date text NOT NULL,
-                                current_change_date text
+                                deck pickle NOT NULL,
+                                add_date text NOT NULL
                             );"""
     create_progress_table = """CREATE TABLE IF NOT EXISTS progress_table (
                                         id integer PRIMARY KEY,
                                         begin_date text NOT NULL,
-                                        progress text NOT NULL,
+                                        progress pickle NOT NULL,
+                                        old_progress pickle,
                                         student_id integer NOT NULL REFERENCES students(id),
                                         deck_id integer NOT NULL REFERENCES decks(id)
                                     );"""
