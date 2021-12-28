@@ -95,32 +95,45 @@ class DeckFrame(ttk.Frame):
 
         #Treeview Frame (TreeView and NoProgress Label inside)
         self.tree_frame = ttk.Frame(self)
-        self.tree_frame.pack(pady=10)
+        self.tree_frame.pack(pady=10, expand=True, fill='both')
         
         #No Deck Warn Label
         self.nodeck_warn_label = ttk.Label(self.tree_frame, text="Siswa ini belum mendaftar sebuah deck.")
-        self.nodeck_warn_label.grid()
+        self.nodeck_warn_label.grid(column=0,row=0)
         
         #Deck Treeview
         self.columns = ("deck_name", "status")
         self.deck_tree = ttk.Treeview(self.tree_frame, columns=self.columns, show='headings')
         self.deck_tree.heading("deck_name", text="Nama Deck")
         self.deck_tree.heading("status", text="Status")
-        self.deck_tree.grid()
+        self.deck_tree.grid(column=0,row=0)
         self.deck_tree.bind('<Button-1>', self.handle_manual_column_resize)
         self.deck_tree.bind('<Motion>', self.handle_manual_column_resize)
 
+        self.raise_nodeck_label(self.progress_list)
+
+        #Button Frame
+        self.deck_button_frame = ttk.Frame(self)
+        self.deck_button_frame.pack(pady=10)
+
         #Choose Deck Button
-        self.choose_deck_button = ttk.Button(self, text="Mulai Sesi")#, command=lambda: self.start_session(self.deck_combobox.get()))
-        self.choose_deck_button.pack(pady=10)
+        self.choose_deck_button = ttk.Button(self.deck_button_frame, text="Mulai Sesi")#, command=lambda: self.start_session(self.deck_combobox.get()))
+        self.choose_deck_button.pack(padx=10, pady=10, side='right')
+
+        #Enroll New Deck Button
+        self.enroll_deck_button = ttk.Button(self.deck_button_frame, text="Daftar Deck")#, command=lambda: self.start_session(self.deck_combobox.get()))
+            #make new window (deck enroller) with toplevel and focus on that window
+        self.enroll_deck_button.pack(pady=10, side='left')
         
         #Pack frame to window
         self.pack(expand=True)
 
     #Show no deck label function
     def raise_nodeck_label(self, progress_bool):
-        if progress_bool == "False":
-            return "break"
+        if progress_bool:
+            self.nodeck_warn_label.grid_remove()
+        else:
+            self.deck_tree.grid_remove()
     
     #Disable manual column resizing function
     def handle_manual_column_resize(self, event):
