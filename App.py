@@ -6,6 +6,7 @@ from initiate_db import initiate_db
 from tkinter import ttk
 import pandas as pd
 import pickle
+import webbrowser
 
 #For insert and get deck and progress DataFrame
 sqlite3.register_converter("pickle", pickle.loads)
@@ -43,11 +44,11 @@ class WelcomeFrame(ttk.Frame):
         
         #Choose Student Button
         self.choose_person_button_nd = ttk.Button(self.button_frame, text="Mulai Sesi Baru", 
-                                                  command=lambda: self.move2deck(self.students_list[self.person_combobox.get()], True, self.connection))
+                                                  command=lambda: self.move2deck(self.students_list[self.person_combobox.get()], True))
         self.choose_person_button_nd.pack()
         self.choose_person_button_nd["state"] = "disabled"
         self.choose_person_button_od = ttk.Button(self.button_frame, text="Mulai Sesi Lama", 
-                                                  command=lambda: self.move2deck(self.students_list[self.person_combobox.get()], False, self.connection))
+                                                  command=lambda: self.move2deck(self.students_list[self.person_combobox.get()], False))
         self.choose_person_button_od.pack(pady=5)
         self.choose_person_button_od["state"] = "disabled"
         
@@ -64,9 +65,9 @@ class WelcomeFrame(ttk.Frame):
             self.choose_person_button_od["state"] = "disabled"
 
     #Frame change (Welcome -> Deck) function
-    def move2deck(self, student_tuple, decrease_days, connection):
+    def move2deck(self, student_tuple, decrease_days):
         self.destroy()
-        DeckFrame(self.container, student_tuple, decrease_days, connection)
+        DeckFrame(self.container, student_tuple, decrease_days, self.connection)
 
 class DeckFrame(ttk.Frame):
     def __init__(self, container, student_tuple, decrease_days, connection):
@@ -121,7 +122,7 @@ class DeckFrame(ttk.Frame):
         self.choose_deck_button.pack(padx=10, pady=10, side='right')
 
         #Enroll New Deck Button
-        self.enroll_deck_button = ttk.Button(self.deck_button_frame, text="Daftar Deck")#, command=lambda: self.start_session(self.deck_combobox.get()))
+        self.enroll_deck_button = ttk.Button(self.deck_button_frame, text="Daftar Deck", command=lambda: self.open_DeckEnrollWindow())
             #make new window (deck enroller) with toplevel and focus on that window
         self.enroll_deck_button.pack(pady=10, side='left')
         
@@ -134,6 +135,11 @@ class DeckFrame(ttk.Frame):
             self.nodeck_warn_label.grid_remove()
         else:
             self.deck_tree.grid_remove()
+
+    #Open DeckEnrollWindow function
+    def open_DeckEnrollWindow(self):
+        window = DeckEnrollWindow(self.container, self.connection)
+        window.grab_set()
     
     #Disable manual column resizing function
     def handle_manual_column_resize(self, event):
@@ -144,6 +150,46 @@ class DeckFrame(ttk.Frame):
     #def start_session(self):
     #    self.destroy()
     #    SessionFrame(self.container)
+
+class DeckEnrollWindow(tk.Toplevel):
+    def __init__(self, container, connection):
+        super().__init__(container)
+
+        #Window setting
+        self.title('Enroll a Deck')
+        self.geometry('200x200')
+        self.resizable(False, False)
+
+        #Window Frame
+        self.WindowFrame = ttk.Frame(self)
+
+        #Label Instruction
+        self.choose_instruction = ttk.Label(self.WindowFrame, text="Pilih Deck:")
+        self.choose_instruction.pack()
+
+        #Choose New Deck ComboBox
+        self.new_deck_combobox = ttk.Combobox(self.WindowFrame, state='readonly')
+        self.new_deck_combobox.pack()
+
+        #ComboBox Inside
+        self.new_deck_combobox['values'] = ['A', 'B']
+        self.new_deck_combobox.bind('<<ComboboxSelected>>', self.change_deck_enroll_button_state)
+        
+        #Choose New Deck Button
+        self.choose_new_deck_button = ttk.Button(self.WindowFrame, text="Daftar Deck")#, 
+                                                  #command=lambda: self.move2deck(self.students_list[self.person_combobox.get()], True, self.connection))
+        self.choose_new_deck_button.pack(pady=10)
+        self.choose_new_deck_button["state"] = "disabled"
+
+        #expand window to get widget centered
+        self.WindowFrame.pack(expand=True)
+
+    #Change button when combobox item selected function
+    def change_deck_enroll_button_state(self, event):
+        if self.new_deck_combobox.get():
+            self.choose_new_deck_button["state"] = "normal"
+        else:
+            self.choose_new_deck_button["state"] = "disabled"
 
 class SessionFrame(ttk.Frame):
     def __init__(self, container, connection):
@@ -189,6 +235,45 @@ class SessionFrame(ttk.Frame):
     #    self.destroy()
     #    DeckFrame(self.container, student_tuple, decrease_days)
 
+class AboutWindow(tk.Toplevel):
+    def __init__(self, container):
+        super().__init__(container)
+
+        #Window setting
+        self.title('About')
+        self.geometry('500x300')
+        self.resizable(False, False)
+
+        #Window Frame
+        self.AboutFrame = ttk.Frame(self)
+
+        #App Logo
+        self.photo = tk.PhotoImage(file='./assets/logo_50.png')
+        self.app_logo = ttk.Label(self.AboutFrame, image=self.photo, padding=5)
+        self.app_logo.pack(pady=10)
+
+        self.app_name = ttk.Label(self.AboutFrame, text='SRIGS', font=('bold', 20))
+        self.app_name.pack()
+        
+        self.app_name2 = ttk.Label(self.AboutFrame, text='Spaced Repetition In Group Software')
+        self.app_name2.pack()
+
+        self.app_desc = ttk.Label(self.AboutFrame, text='SRIGS is a spaced repetition deck manager for group/school use.')
+        self.app_desc.pack(pady=10)
+        
+        self.author = ttk.Label(self.AboutFrame, text='SRIGS by N. Zia Akmal, 2021')
+        self.author.pack()
+        
+        self.github = ttk.Label(self.AboutFrame, text='go to github repo', foreground='blue')
+        self.github.pack(pady=10)
+        self.github.bind("<Button-1>", lambda e: self.callback("https://github.com/akmlzia/SRIGS"))
+
+        #expand window to get widget centered
+        self.AboutFrame.pack(expand=True)
+    
+    def callback(self, url):
+        webbrowser.open_new_tab(url)
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -197,6 +282,17 @@ class App(tk.Tk):
         self.title('SRIG4SA')
         self.geometry('400x400')
         self.resizable(False, False)
+        self.iconphoto(True, tk.PhotoImage(file='./assets/logo.png'))
+
+        #Menu
+        self.menu = tk.Menu(self)
+        self.config(menu=self.menu)
+        self.menu.add_command(label='About', command=lambda:self.open_AboutWindow())
+
+    #Open DeckEnrollWindow function
+    def open_AboutWindow(self):
+        window = AboutWindow(self)
+        window.grab_set()
 
 if __name__ == "__main__":
     if not exists('data.db'):
